@@ -59,8 +59,10 @@ representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the community leaders responsible for enforcement at
-maintainers@users.noreply.github.com.
+reported to the project maintainer on GitHub:
+[@Soonkeira](https://github.com/Soonkeira). For sensitive reports, use a
+private channel such as a [security advisory](https://github.com/Soonkeira/skill-nexus-hub/security/advisories/new)
+rather than a public issue.
 All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the
