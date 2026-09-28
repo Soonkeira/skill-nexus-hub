@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: skill_nexus_hub
+      POSTGRES_USER: skillhub
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U skillhub"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://skillhub:${DB_PASSWORD}@postgres:5432/skill_nexus_hub
+      SECRET_KEY: ${SECRET_KEY}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
+      DATA_DIR: /data/skills
+      # Number of uvicorn worker processes (scales across CPU cores).
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-4}
+    volumes:
+      - ./data/skills:/data/skills
+      - ./data/cli:/data/cli
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "9527:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:

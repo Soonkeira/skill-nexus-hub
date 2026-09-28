@@ -1,0 +1,18 @@
+[project]
+name = "skill-nexus-hub-cli"
+version = "0.1.0"
+description = "Skill Nexus Hub CLI - manage AI agent skills"
+requires-python = ">=3.10"
+dependencies = [
+    "typer>=0.15.0",
+    "httpx>=0.28.0",
+    "rich>=13.9.0",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+snh = "snh.main:app"
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"

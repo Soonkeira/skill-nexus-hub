@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skill Nexus Hub — 设计优化方案 v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: #eef1f5; color: #1a1a2e; }
+
+  /* ── Nav ── */
+  .nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: #fff; border-bottom: 1px solid #e2e5ea; height: 52px; display: flex; align-items: center; padding: 0 20px; gap: 6px; }
+  .nav-title { font-size: 14px; font-weight: 700; color: #0f172a; margin-right: 20px; }
+  .tab { padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; border: none; background: transparent; color: #64748b; transition: all .15s; }
+  .tab:hover { background: #f4f5f7; }
+  .tab.on { background: #0f172a; color: #fff; }
+
+  .sec { display: none; padding: 68px 20px 40px; max-width: 1400px; margin: 0 auto; }
+  .sec.on { display: block; }
+
+  /* ── Tokens ── */
+  :root {
+    --blue: #2563eb; --blue-dark: #1d4ed8; --blue-50: #eff6ff;
+    --teal: #14b8a6;
+    --navy: #0f172a;
+    --t1: #172033; --t2: #5b667a; --t3: #8b95a7;
+    --border: #dfe7f1;
+    --card: #ffffff; --page: #f4f7fb;
+  }
+
+  .lbl { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--blue); background: var(--blue-50); padding: 3px 9px; border-radius: 5px; display: inline-flex; align-items: center; gap: 5px; }
+  .hdg { font-size: 26px; font-weight: 800; color: var(--t1); line-height: 1.15; }
+  .sub { font-size: 14px; color: var(--t2); line-height: 1.6; margin-top: 8px; }
+
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 28px; }
+  .tag-b { font-size: 11px; font-weight: 600; padding: 6px 14px; border-radius: 6px 6px 0 0; display: block; }
+  .tag-b.before { background: #fef2f2; color: #dc2626; }
+  .tag-b.after { background: #f0fdf4; color: #16a34a; }
+  .box { border: 1px solid var(--border); border-top: none; border-radius: 0 0 10px 10px; overflow: hidden; }
+
+  .iss { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 12px; }
+  .iss h4 { font-size: 13px; font-weight: 600; color: var(--t1); margin-bottom: 5px; }
+  .iss p { font-size: 13px; color: var(--t2); line-height: 1.6; }
+  .sv { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 3px; margin-bottom: 6px; }
+  .sv.h { background: #fef2f2; color: #dc2626; }
+  .sv.m { background: #fffbeb; color: #d97706; }
+  .sv.l { background: #f0f9ff; color: #0284c7; }
+
+  .note { margin-top: 20px; background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .note h4 { font-size: 13px; font-weight: 600; color: var(--t1); margin-bottom: 8px; }
+  .note ul { font-size: 13px; color: var(--t2); line-height: 1.8; padding-left: 16px; }
+
+  /* ══════════════════════════════════════
+     HERO — BEFORE
+     ══════════════════════════════════════ */
+  .hero-b {
+    background: var(--navy); border-radius: 14px; padding: 28px;
+    color: #fff; display: flex; justify-content: space-between; gap: 28px;
+    position: relative; overflow: hidden;
+  }
+  .hero-b .grid-bg {
+    position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px),
+                       linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px);
+    background-size: 30px 30px; opacity: .5;
+  }
+  .hero-b > * { position: relative; z-index: 1; }
+  .hero-b .badge { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.15); padding: 4px 10px; border-radius: 5px; font-size: 11px; display: inline-flex; align-items: center; gap: 5px; color: rgba(255,255,255,.85); }
+  .hero-b .title { font-size: 28px; font-weight: 800; margin-top: 14px; line-height: 1.15; }
+  .hero-b .desc { font-size: 13px; color: rgba(255,255,255,.75); margin-top: 8px; line-height: 1.6; max-width: 500px; }
+  .hero-b .btn-w { margin-top: 14px; background: #fff; color: var(--blue); padding: 8px 16px; border-radius: 7px; font-size: 12px; font-weight: 600; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+  .hero-b .info { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); border-radius: 9px; padding: 12px 14px; }
+  .hero-b .info p { font-size: 10px; color: rgba(255,255,255,.55); }
+  .hero-b .info .v { font-size: 14px; font-weight: 600; color: #fff; margin-top: 3px; }
+  .hero-b-rg { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; min-width: 320px; }
+
+  .metric-b { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: -10px; padding: 0 4px; position: relative; z-index: 2; }
+  .metric-b .m-card { background: linear-gradient(180deg,rgba(255,255,255,.92),rgba(255,255,255,.74)); border: 1px solid var(--border); border-radius: 10px; padding: 14px; display: flex; align-items: center; gap: 12px; box-shadow: 0 4px 14px rgba(0,0,0,.05); }
+  .metric-b .m-icon { width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .metric-b .m-val { font-size: 18px; font-weight: 700; color: var(--t1); }
+  .metric-b .m-lbl { font-size: 11px; color: var(--t3); }
+
+  /* ══════════════════════════════════════
+     HERO — AFTER (tasteful)
+     ══════════════════════════════════════ */
+  .hero-a {
+    border-radius: 14px; overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--card);
+    box-shadow: 0 1px 3px rgba(0,0,0,.04), 0 6px 16px rgba(15,23,42,.06);
+  }
+  .hero-a-top {
+    background: var(--navy);
+    padding: 28px 32px;
+    color: #fff;
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 28px;
+  }
+  .hero-a .badge { background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.14); padding: 4px 10px; border-radius: 5px; font-size: 11px; display: inline-flex; align-items: center; gap: 5px; color: rgba(255,255,255,.80); }
+  .hero-a .title { font-size: 28px; font-weight: 800; margin-top: 14px; line-height: 1.15; letter-spacing: -.02em; }
+  .hero-a .desc { font-size: 13px; color: rgba(255,255,255,.68); margin-top: 8px; line-height: 1.6; max-width: 480px; }
+  .hero-a .btn-w { margin-top: 14px; background: #fff; color: var(--navy); padding: 8px 16px; border-radius: 7px; font-size: 12px; font-weight: 600; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+  .hero-a .btn-g { margin-top: 14px; background: none; color: rgba(255,255,255,.80); padding: 8px 12px; border-radius: 7px; font-size: 12px; font-weight: 500; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+  .hero-a .stat { padding: 10px 14px; border-bottom: 2px solid transparent; }
+  .hero-a .stat p { font-size: 10px; color: rgba(255,255,255,.50); text-transform: uppercase; letter-spacing: .06em; }
+  .hero-a .stat .v { font-size: 20px; font-weight: 700; color: #fff; margin-top: 2px; }
+  .hero-a-rg { display: flex; gap: 0; min-width: 340px; }
+
+  .hero-a-mid {
+    background: var(--card); padding: 0 32px;
+    display: flex; gap: 0;
+  }
+  .hero-a-mid .metric {
+    padding: 16px 20px 16px 0; display: flex; align-items: center; gap: 12px;
+    border-right: 1px solid var(--border); margin-right: 20px;
+  }
+  .hero-a-mid .metric:last-child { border-right: none; margin-right: 0; }
+  .hero-a-mid .metric .mi { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .hero-a-mid .metric .mv { font-size: 18px; font-weight: 700; color: var(--t1); }
+  .hero-a-mid .metric .ml { font-size: 11px; color: var(--t3); }
+
+  /* ══════════════════════════════════════
+     AUTH — BEFORE
+     ══════════════════════════════════════ */
+  .auth-b { display: grid; grid-template-columns: 460px 1fr; gap: 16px; min-height: 520px; border-radius: 14px; overflow: hidden; border: 1px solid var(--border); }
+  .auth-b .show { background: linear-gradient(145deg, rgba(15,23,42,.96), rgba(30,64,175,.90) 52%, rgba(15,118,110,.92)), #0f172a; color: #fff; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }
+  .auth-b .show::before { content: ''; position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px); background-size: 28px 28px; opacity: .4; }
+  .auth-b .show > * { position: relative; z-index: 1; }
+  .auth-b .form-area { background: linear-gradient(135deg, #F8FBFF 0%, #EEF6FF 45%, #ECFDF8 100%); display: flex; align-items: center; justify-content: center; padding: 28px; }
+  .auth-b .form-card { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 24px; width: 100%; max-width: 380px; box-shadow: 0 1px 3px rgba(0,0,0,.04), 0 6px 16px rgba(0,0,0,.05); }
+  .auth-b .fc-label { font-size: 10px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--blue); }
+  .auth-b .fc-title { font-size: 22px; font-weight: 700; color: var(--t1); margin-top: 5px; }
+  .auth-b .fc-desc { font-size: 13px; color: var(--t2); margin-top: 6px; line-height: 1.5; }
+  .auth-b .fc-field { margin-top: 14px; }
+  .auth-b .fc-field label { display: block; font-size: 12px; font-weight: 500; color: var(--t1); margin-bottom: 5px; }
+  .auth-b .fc-field input { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; background: var(--page); outline: none; }
+  .auth-b .fc-btn { width: 100%; margin-top: 16px; padding: 10px; background: var(--blue); color: #fff; border: none; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; }
+
+  /* ══════════════════════════════════════
+     AUTH — AFTER (tasteful)
+     ══════════════════════════════════════ */
+  .auth-a { display: grid; grid-template-columns: 500px 1fr; min-height: 520px; border-radius: 14px; overflow: hidden; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,.04), 0 8px 24px rgba(15,23,42,.08); }
+  .auth-a .show {
+    background: var(--navy); color: #fff; padding: 28px 24px;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .auth-a .show .brand { display: flex; align-items: center; gap: 9px; }
+  .auth-a .show .brand-icon { width: 32px; height: 32px; border-radius: 7px; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.14); display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .auth-a .show .brand-name { font-size: 14px; font-weight: 600; }
+  .auth-a .show .brand-sub { font-size: 10px; color: rgba(255,255,255,.45); }
+  .auth-a .show .headline { font-size: 26px; font-weight: 700; line-height: 1.15; letter-spacing: -.02em; margin-top: 24px; max-width: 340px; }
+  .auth-a .show .body-text { font-size: 13px; color: rgba(255,255,255,.60); line-height: 1.6; margin-top: 12px; max-width: 360px; }
+  .auth-a .show .feat { margin-top: 20px; display: flex; flex-direction: column; gap: 8px; }
+  .auth-a .show .feat-row {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; color: rgba(255,255,255,.80);
+  }
+  .auth-a .show .feat-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.35); flex-shrink: 0; }
+  .auth-a .show .cli {
+    margin-top: 18px; background: rgba(0,0,0,.30); border: 1px solid rgba(255,255,255,.06);
+    border-radius: 8px; padding: 12px 14px; font-family: 'SF Mono', monospace; font-size: 11px;
+    color: rgba(255,255,255,.60); line-height: 1.7;
+  }
+  .auth-a .show .cli .prompt { color: rgba(255,255,255,.30); }
+  .auth-a .show .cli .cmd-val { color: rgba(255,255,255,.80); }
+  .auth-a .show .copy { font-size: 10px; color: rgba(255,255,255,.28); margin-top: auto; padding-top: 12px; }
+
+  .auth-a .form-area {
+    background: #fff; display: flex; align-items: center; justify-content: center; padding: 36px;
+  }
+  .auth-a .form-inner { width: 100%; max-width: 380px; }
+  .auth-a .fc-label { font-size: 10px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--blue); }
+  .auth-a .fc-title { font-size: 24px; font-weight: 700; color: var(--t1); margin-top: 6px; letter-spacing: -.02em; }
+  .auth-a .fc-desc { font-size: 14px; color: var(--t2); margin-top: 6px; line-height: 1.55; }
+  .auth-a .fc-field { margin-top: 16px; }
+  .auth-a .fc-field label { display: block; font-size: 13px; font-weight: 500; color: var(--t1); margin-bottom: 6px; }
+  .auth-a .fc-field .inp-wrap { position: relative; }
+  .auth-a .fc-field .inp-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--t3); font-size: 13px; }
+  .auth-a .fc-field input {
+    width: 100%; padding: 9px 12px 9px 34px; border: 1px solid var(--border);
+    border-radius: 8px; font-size: 13px; background: var(--page); color: var(--t1);
+    outline: none; transition: border-color .15s, box-shadow .15s;
+  }
+  .auth-a .fc-field input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,.08); background: #fff; }
+  .auth-a .fc-btn {
+    width: 100%; margin-top: 20px; padding: 10px; background: var(--navy);
+    color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: background .15s;
+  }
+  .auth-a .fc-btn:hover { background: #1e293b; }
+  .auth-a .fc-footer { text-align: center; font-size: 13px; color: var(--t3); margin-top: 16px; }
+  .auth-a .fc-footer a { color: var(--blue); font-weight: 600; text-decoration: none; }
+
+  /* ══════════════════════════════════════
+     PAGE HERO VARIANTS
+     ══════════════════════════════════════ */
+  .ph-vars { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-top: 24px; }
+  .ph-sample { border-radius: 10px; padding: 18px; }
+  .ph-sample .ph-lbl { font-size: 10px; font-weight: 600; color: var(--blue); background: var(--blue-50); padding: 3px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; }
+  .ph-sample .ph-t { font-size: 18px; font-weight: 700; color: var(--t1); margin-top: 8px; }
+  .ph-sample .ph-d { font-size: 12px; color: var(--t2); margin-top: 5px; line-height: 1.5; }
+
+  /* BEFORE: current 4-layer gradient */
+  .ph-grad {
+    background: linear-gradient(135deg, rgba(255,255,255,.94), rgba(255,255,255,.76)),
+                radial-gradient(circle at 8% 15%, rgba(37,99,235,.12), transparent 28%),
+                radial-gradient(circle at 92% 18%, rgba(20,184,166,.14), transparent 24%),
+                #fff;
+    border: 1px solid rgba(223,231,241,.90);
+    box-shadow: 0 18px 45px rgba(18,38,63,.08);
+  }
+  /* AFTER-a: pure card */
+  .ph-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(15,23,42,.05);
+  }
+  /* AFTER-b: subtle top accent via solid color block, NOT gradient line */
+  .ph-accent {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--navy);
+    box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(15,23,42,.05);
+  }
+  .ph-verdict { margin-top: 8px; font-size: 11px; color: var(--t3); padding: 0 2px; }
+
+  /* ══════════════════════════════════════
+     SUMMARY TABLE
+     ══════════════════════════════════════ */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 20px; background: #fff; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+  .tbl th { background: #f8fafc; text-align: left; padding: 9px 14px; font-weight: 600; color: var(--t2); border-bottom: 1px solid var(--border); font-size: 11px; }
+  .tbl td { padding: 9px 14px; border-bottom: 1px solid #f1f5f9; color: var(--t2); }
+  .tbl tr:last-child td { border-bottom: none; }
+  .tbl .area { font-weight: 600; color: var(--t1); white-space: nowrap; }
+  .p0 { background: #fef2f2; color: #dc2626; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 3px; }
+  .p1 { background: #fffbeb; color: #d97706; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 3px; }
+  .p2 { background: #f0f9ff; color: #0284c7; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 3px; }
+
+  .principle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px; }
+  .principle-card { padding: 14px 16px; background: #fff; border: 1px solid var(--border); border-radius: 8px; }
+  .principle-card .pc-t { font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 3px; }
+  .principle-card .pc-d { font-size: 12px; color: var(--t2); }
+
+  @media (max-width: 900px) {
+    .row { grid-template-columns: 1fr; }
+    .hero-b, .hero-a-top { flex-direction: column; }
+    .hero-b-rg, .hero-a-rg { min-width: unset; }
+    .auth-b, .auth-a { grid-template-columns: 1fr; }
+    .ph-vars { grid-template-columns: 1fr; }
+    .principle-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <span class="nav-title">SSH Design Review v2</span>
+  <button class="tab on" onclick="go('s1',this)">首页 Hero</button>
+  <button class="tab" onclick="go('s2',this)">登录 / 注册</button>
+  <button class="tab" onclick="go('s3',this)">Page Hero</button>
+  <button class="tab" onclick="go('s4',this)">优化汇总</button>
+</nav>
+
+<!-- ══════════════════════════════════════
+     SECTION 1: HOMEPAGE HERO
+     ══════════════════════════════════════ -->
+<div id="s1" class="sec on">
+  <span class="lbl">&#9881; 核心问题</span>
+  <h2 class="hdg" style="margin-top:10px">首页 "Skill 工作台" Hero</h2>
+  <p class="sub">当前 Hero 是一个纯黑矩形 + 网格背景 + 半透明小卡片，视觉上像一个"暗色模板"而非有品牌感的设计。正确的做法：用排版和结构说话，而不是用光效和渐变。</p>
+
+  <div style="margin-top:18px">
+    <div class="iss">
+      <span class="sv h">核心问题</span>
+      <h4>纯黑 #0F172A + 透明 ::before = 没有任何视觉品质</h4>
+      <p>网格背景（grid lines）是 AI 设计的标志性元素。好的深色面板靠的是<strong>排版节奏、留白比例、信息层级</strong>来建立品质感，不是靠叠加纹理。Linear 的深色页面是纯色的，Vercel 也是。</p>
+    </div>
+    <div class="iss">
+      <span class="sv h">核心问题</span>
+      <h4>右侧 4 个小卡片全是 bg-white/12，无主次</h4>
+      <p>"当前角色：普通用户"占据了和"精选 Skill"一样的视觉权重。信息没有分层，所有内容都在喊叫。</p>
+    </div>
+    <div class="iss">
+      <span class="sv m">次要问题</span>
+      <h4>metric-tile 使用渐变背景，与深色 Hero 视觉断裂</h4>
+      <p>Hero 深色 → metric 白色渐变 → 卡片白色，中间没有过渡。不是因为需要"过渡渐变"，而是因为 metric 和 Hero 应该是同一个结构体。</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- BEFORE -->
+    <div>
+      <span class="tag-b before">Before — 当前</span>
+      <div class="box">
+        <div class="hero-b">
+          <div class="grid-bg"></div>
+          <div>
+            <div class="badge">&#9745; 审核后发布 · Web + CLI</div>
+            <div class="title">Skill 工作台</div>
+            <div class="desc">统一查看团队技能、跟进审核状态，并把可复用的 Agent Skill 发布到团队市场。</div>
+            <div style="display:flex;gap:6px">
+              <button class="btn-w">发布 Skill &#8599;</button>
+              <button style="margin-top:14px;background:none;color:rgba(255,255,255,.8);border:none;cursor:pointer;font-size:12px;padding:8px 10px">查看全部 &#8594;</button>
+            </div>
+          </div>
+          <div class="hero-b-rg">
+            <div class="info"><p>精选 Skill</p><p class="v">3 个推荐</p></div>
+            <div class="info"><p>本周热门</p><p class="v">5 个活跃</p></div>
+            <div class="info" style="grid-column:span 2"><p>推荐工作流</p><p class="v">发现 · 安装 · 复用</p></div>
+            <div class="info" style="grid-column:span 2"><p style="color:rgba(255,255,255,.4)">&#10003; 当前角色：普通用户</p></div>
+          </div>
+        </div>
+        <div class="metric-b">
+          <div class="m-card"><div class="m-icon" style="background:#eff6ff">&#128230;</div><div><div class="m-val">128</div><div class="m-lbl">技能总数</div></div></div>
+          <div class="m-card"><div class="m-icon" style="background:#ecfdf5">&#128200;</div><div><div class="m-val">3,240</div><div class="m-lbl">总下载量</div></div></div>
+          <div class="m-card"><div class="m-icon" style="background:#f5f3ff">&#128101;</div><div><div class="m-val">56</div><div class="m-lbl">注册用户</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AFTER -->
+    <div>
+      <span class="tag-b after">After — 排版驱动</span>
+      <div class="box">
+        <div class="hero-a">
+          <div class="hero-a-top">
+            <div style="min-width:0">
+              <div class="badge">&#9745; 审核后发布 · Web + CLI</div>
+              <div class="title">Skill 工作台</div>
+              <div class="desc">统一查看团队技能、跟进审核状态，并把可复用的 Agent Skill 发布到团队市场。</div>
+              <div style="display:flex;gap:6px;align-items:center">
+                <button class="btn-w">发布 Skill &#8599;</button>
+                <button class="btn-g">查看全部 &#8594;</button>
+              </div>
+            </div>
+            <div class="hero-a-rg">
+              <div class="stat"><p>精选</p><p class="v">3</p></div>
+              <div class="stat"><p>热门</p><p class="v">5</p></div>
+              <div class="stat"><p>工作流</p><p class="v" style="font-size:13px;font-weight:500;margin-top:6px">发现 · 安装 · 复用</p></div>
+            </div>
+          </div>
+          <div class="hero-a-mid">
+            <div class="metric"><div class="mi" style="background:#eff6ff">&#128230;</div><div><div class="mv">128</div><div class="ml">技能总数</div></div></div>
+            <div class="metric"><div class="mi" style="background:#ecfdf5">&#128200;</div><div><div class="mv">3,240</div><div class="ml">总下载量</div></div></div>
+            <div class="metric"><div class="mi" style="background:#f5f3ff">&#128101;</div><div><div class="mv">56</div><div class="ml">注册用户</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <h4>具体改动</h4>
+    <ul>
+      <li><strong>深色区</strong>：保留 <code>#0F172A</code> 纯色，<strong>移除网格背景</strong>（grid lines 是 AI 设计标志）</li>
+      <li><strong>右侧信息</strong>：改为横排 stat 列表（标签 + 数值），用字号和字重做层级，不用卡片套卡片。"当前角色"信息移除（低价值）</li>
+      <li><strong>指标区</strong>：合入 Hero 白色底部条带，用竖线分隔符替代独立卡片。去掉 metric-tile 渐变背景</li>
+      <li><strong>按钮</strong>："发布 Skill" 保持白色实心，"查看全部" 降级为 ghost 样式。按钮色调用 <code>var(--navy)</code> 而非蓝色，减少色彩噪音</li>
+      <li><strong>结构</strong>：Hero = 深色头部 + 白色底部，一体化圆角容器。视觉上是"一张卡片"而非"三个组件堆叠"</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SECTION 2: AUTH PAGES
+     ══════════════════════════════════════ -->
+<div id="s2" class="sec">
+  <span class="lbl">&#128274; 登录 / 注册</span>
+  <h2 class="hdg" style="margin-top:10px">认证页面</h2>
+  <p class="sub">当前 Showcase 面板使用三色渐变（navy→blue→teal）+ 网格纹理，是典型的 AI 落地页风格。好的做法：纯色深色面板 + 干净的排版。</p>
+
+  <div style="margin-top:18px">
+    <div class="iss">
+      <span class="sv h">核心问题</span>
+      <h4>Showcase 三色渐变是 AI 设计的标配</h4>
+      <p><code>linear-gradient(145deg, navy, blue, teal)</code> 这种"深蓝→亮蓝→青绿"三段式渐变出现在几乎所有 AI 生成的落地页上。应该用<strong>纯色</strong>。Linear 用纯黑，Vercel 用纯黑，Notion 用纯深灰。</p>
+    </div>
+    <div class="iss">
+      <span class="sv h">核心问题</span>
+      <h4>网格纹理 + 粒子动画 = 过度装饰</h4>
+      <p>34px 的网格线 + 18 个浮动粒子，在登录页面这种功能性页面上是噪音。用户来登录的，不是来看 demo 的。</p>
+    </div>
+    <div class="iss">
+      <span class="sv m">次要问题</span>
+      <h4>表单侧背景渐变不可见</h4>
+      <p><code>#F8FBFF → #EEF6FF → #ECFDF8</code> 肉眼看就是白色。如果效果不可见，就不要加。</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- BEFORE -->
+    <div>
+      <span class="tag-b before">Before — 当前</span>
+      <div class="box">
+        <div class="auth-b">
+          <div class="show">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+                <div style="width:32px;height:32px;border-radius:7px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:14px">&#9776;</div>
+                <div><div style="font-size:13px;font-weight:600">Skill Nexus Hub</div><div style="font-size:9px;color:rgba(255,255,255,.45)">Agent Skill Ops</div></div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:24px;font-weight:700;line-height:1.15">内部 Agent Skill<br>管理平台</div>
+              <div style="font-size:12px;color:rgba(255,255,255,.70);line-height:1.6;margin-top:10px;max-width:300px">统一管理团队沉淀的 AI 编程技能。</div>
+              <div style="margin-top:12px;background:rgba(0,0,0,.20);border:1px solid rgba(255,255,255,.06);border-radius:7px;padding:10px 12px;font-family:monospace;font-size:10px;color:rgba(255,255,255,.65);line-height:1.7">
+                $ snh login --server skillhub.internal<br>
+                $ snh search code-review<br>
+                $ snh install code-review
+              </div>
+            </div>
+            <div style="font-size:9px;color:rgba(255,255,255,.25)">&copy; 2026 Skill Nexus Hub</div>
+          </div>
+          <div class="form-area">
+            <div class="form-card">
+              <div class="fc-label">Sign in</div>
+              <div class="fc-title">欢迎回来</div>
+              <div class="fc-desc">登录后继续管理团队 Skill。</div>
+              <div class="fc-field"><label>用户名</label><input type="text" placeholder="请输入用户名"></div>
+              <div class="fc-field"><label>密码</label><input type="password" placeholder="请输入密码"></div>
+              <button class="fc-btn">登录 &#8594;</button>
+              <p style="text-align:center;font-size:12px;color:var(--t3);margin-top:14px">还没有账号？<a href="#" style="color:var(--blue);font-weight:600">申请注册</a></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AFTER -->
+    <div>
+      <span class="tag-b after">After — 纯色排版驱动</span>
+      <div class="box">
+        <div class="auth-a">
+          <div class="show">
+            <div class="brand">
+              <div class="brand-icon">&#9776;</div>
+              <div><div class="brand-name">Skill Nexus Hub</div><div class="brand-sub">Agent Skill Ops</div></div>
+            </div>
+            <div>
+              <div class="headline">内部 Agent Skill 管理平台</div>
+              <div class="body-text">统一管理团队沉淀的 AI 编程技能，让 Claude Code、Codex、Cursor 等工具复用同一套可信 Skill 源。</div>
+              <div class="feat">
+                <div class="feat-row"><div class="feat-dot"></div>管理员审核发布</div>
+                <div class="feat-row"><div class="feat-dot"></div>版本留痕与回滚</div>
+                <div class="feat-row"><div class="feat-dot"></div>Web + CLI 一套入口</div>
+              </div>
+              <div class="cli">
+                <div style="font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.30);margin-bottom:6px">CLI workflow</div>
+                <div><span class="prompt">$ </span><span class="cmd-val">snh login --server skillhub.internal</span></div>
+                <div><span class="prompt">$ </span><span class="cmd-val">snh search code-review</span></div>
+                <div><span class="prompt">$ </span><span class="cmd-val">snh install code-review --target codex</span></div>
+              </div>
+            </div>
+            <div class="copy">&copy; 2026 Skill Nexus Hub</div>
+          </div>
+          <div class="form-area">
+            <div class="form-inner">
+              <div class="fc-label">Sign in</div>
+              <div class="fc-title">欢迎回来</div>
+              <div class="fc-desc">登录后继续管理团队 Skill、查看审核状态和安装入口。</div>
+              <div class="fc-field">
+                <label>用户名</label>
+                <div class="inp-wrap"><span class="inp-icon">&#128100;</span><input type="text" placeholder="请输入用户名"></div>
+              </div>
+              <div class="fc-field">
+                <label>密码</label>
+                <div class="inp-wrap"><span class="inp-icon">&#128274;</span><input type="password" placeholder="请输入密码"></div>
+              </div>
+              <button class="fc-btn">登录 &#8594;</button>
+              <div class="fc-footer">还没有账号？<a href="#">申请注册</a></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <h4>具体改动</h4>
+    <ul>
+      <li><strong>Showcase 面板</strong>：<code>linear-gradient(145deg, navy, blue, teal)</code> → 纯色 <code>#0F172A</code>。不加网格、不加光晕、不加粒子。纯色 + 好的排版</li>
+      <li><strong>功能列表</strong>：去掉 workflow-card 的 <code>bg-white/08</code> 半透明背景 + Lucide 图标，改为最简单的"圆点 + 文字"列表。克制</li>
+      <li><strong>CLI 块</strong>：保留但降对比度。命令文字用 <code>rgba(255,255,255,.80)</code>，prompt 用 <code>.30</code>。标题 "CLI workflow" 用极淡色。整体是内容的一部分，不是装饰</li>
+      <li><strong>表单区</strong>：背景改为纯白 <code>#fff</code>，去掉 <code>auth-canvas</code> 的三段渐变。表单和 showcase 之间去掉 gap，合为一个圆角容器</li>
+      <li><strong>登录按钮</strong>：从蓝色改为 <code>var(--navy)</code>。整个页面只有深蓝一种主色，不再蓝绿紫混用</li>
+      <li><strong>去掉粒子动画</strong>：18 个浮动粒子在登录页面毫无必要</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SECTION 3: PAGE HERO
+     ══════════════════════════════════════ -->
+<div id="s3" class="sec">
+  <span class="lbl">&#128196; 内页 Hero</span>
+  <h2 class="hdg" style="margin-top:10px">Page Hero 方案</h2>
+  <p class="sub">当前 page-hero 用 4 层渐变构建"磨砂玻璃"效果，但透明度极低肉眼不可见。既然看不到效果就不应该加。Page Hero 应该就是一张<strong>干净的白色卡片</strong>。</p>
+
+  <div style="margin-top:18px">
+    <div class="iss">
+      <span class="sv h">核心原则</span>
+      <h4>不可见的装饰 = 不应该存在</h4>
+      <p><code>radial-gradient(circle at 8% 15%, rgba(37,99,235,.12), transparent 28%)</code> — 12% 透明度的蓝色光晕，在白色背景上几乎不可见。如果需要让 page-hero 和 surface-card 有区别，靠<strong>内容结构</strong>（标签 + 标题 + 描述的排版组合），不靠背景特效。</p>
+    </div>
+    <div class="iss">
+      <span class="sv m">重要提醒</span>
+      <h4>不要加渐变线、不要加渐变边框</h4>
+      <p>3px 顶部 <code>linear-gradient(90deg, blue, teal)</code> 渐变线是 AI 设计的另一个标志。如果需要视觉区分，用<strong>纯色</strong>的 <code>border-top: 3px solid var(--navy)</code>，或者什么都不加，靠排版说话。</p>
+    </div>
+  </div>
+
+  <div class="ph-vars">
+    <div>
+      <div style="font-size:11px;font-weight:600;padding:7px 12px;background:#fef2f2;color:#dc2626;border-radius:6px 6px 0 0">Before — 4 层渐变</div>
+      <div class="ph-sample ph-grad">
+        <div class="ph-lbl">&#9733; 团队能力目录</div>
+        <div class="ph-t">Skill 市场</div>
+        <div class="ph-d">查找可安装、可复用的 Agent Skill。</div>
+      </div>
+      <div class="ph-verdict">&#10060; 4 层渐变 &bull; 不可见 &bull; 白费渲染</div>
+    </div>
+    <div>
+      <div style="font-size:11px;font-weight:600;padding:7px 12px;background:#f0fdf4;color:#16a34a;border-radius:6px 6px 0 0">推荐 — 纯白卡片</div>
+      <div class="ph-sample ph-card">
+        <div class="ph-lbl">&#9733; 团队能力目录</div>
+        <div class="ph-t">Skill 市场</div>
+        <div class="ph-d">查找可安装、可复用的 Agent Skill。</div>
+      </div>
+      <div class="ph-verdict">&#10004; 纯白 + 边框 + 阴影 &bull; 与 surface-card 统一 &bull; 排版驱动</div>
+    </div>
+    <div>
+      <div style="font-size:11px;font-weight:600;padding:7px 12px;background:#f0f9ff;color:#0284c7;border-radius:6px 6px 0 0">备选 — 纯色顶部边框</div>
+      <div class="ph-sample ph-accent">
+        <div class="ph-lbl">&#9733; 团队能力目录</div>
+        <div class="ph-t">Skill 市场</div>
+        <div class="ph-d">查找可安装、可复用的 Agent Skill。</div>
+      </div>
+      <div class="ph-verdict">&#10004; 3px solid navy 顶部边框 &bull; 克制的区分 &bull; 不是渐变线</div>
+    </div>
+  </div>
+
+  <div class="note">
+    <h4>推荐方案：纯白卡片（方案 B）</h4>
+    <p style="font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:10px">
+      page-hero 直接复用 <code>surface-card</code> 的样式。不需要独立的 CSS 类。
+      标签（&#9733; 团队能力目录）+ 标题 + 描述的组合已经足以区分它和普通卡片。
+      如果确实需要视觉强调，用<strong>纯色</strong> <code>border-top: 3px solid var(--navy)</code>，不用渐变线。
+    </p>
+    <pre style="background:#f8fafc;border:1px solid var(--border);border-radius:7px;padding:14px;font-size:11px;line-height:1.5;overflow-x:auto;color:var(--t2)"><code>/* page-hero 就是 surface-card，不需要独立样式 */
+/* 如果需要额外强调，加纯色顶部边框 */
+
+.page-hero {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+  /* 可选: border-top: 3px solid var(--navy); */
+}</code></pre>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SECTION 4: SUMMARY
+     ══════════════════════════════════════ -->
+<div id="s4" class="sec">
+  <span class="lbl">&#128203; 汇总</span>
+  <h2 class="hdg" style="margin-top:10px">全项目优化清单</h2>
+
+  <table class="tbl">
+    <thead><tr><th>优化项</th><th>优先级</th><th>文件</th><th>量级</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="area">Hero 移除网格背景</td>
+        <td><span class="p0">P0</span></td>
+        <td><code>globals.css</code></td>
+        <td>1 行</td>
+        <td>删除 <code>.mesh-hero::before</code> 的 grid lines 背景图</td>
+      </tr>
+      <tr>
+        <td class="area">Hero 信息卡片改为 stat 列表</td>
+        <td><span class="p0">P0</span></td>
+        <td><code>page.tsx</code></td>
+        <td>中</td>
+        <td>右侧 4 卡片 → 横排 stat，移除"当前角色"</td>
+      </tr>
+      <tr>
+        <td class="area">Hero metric 合入底部条带</td>
+        <td><span class="p0">P0</span></td>
+        <td><code>page.tsx</code> + CSS</td>
+        <td>中</td>
+        <td>metric-tile 独立卡片 → Hero 白色底部内嵌</td>
+      </tr>
+      <tr>
+        <td class="area">Showcase 改为纯色</td>
+        <td><span class="p1">P1</span></td>
+        <td><code>globals.css</code></td>
+        <td>1 行</td>
+        <td><code>.auth-showcase</code> 删除 gradient，改为 <code>background: #0F172A</code></td>
+      </tr>
+      <tr>
+        <td class="area">移除粒子和网格动画</td>
+        <td><span class="p1">P1</span></td>
+        <td><code>AuthShowcase.tsx</code></td>
+        <td>中</td>
+        <td>删除 particles useEffect 和 grid overlay div</td>
+      </tr>
+      <tr>
+        <td class="area">auth-canvas 改为纯白</td>
+        <td><span class="p1">P1</span></td>
+        <td><code>globals.css</code></td>
+        <td>1 行</td>
+        <td><code>background: #fff</code></td>
+      </tr>
+      <tr>
+        <td class="area">登录/注册 gap → 0</td>
+        <td><span class="p1">P1</span></td>
+        <td>login + register</td>
+        <td>1 行</td>
+        <td>合为同一个圆角容器</td>
+      </tr>
+      <tr>
+        <td class="area">page-hero 简化为 surface-card</td>
+        <td><span class="p1">P1</span></td>
+        <td><code>globals.css</code></td>
+        <td>小</td>
+        <td>4 层渐变 → <code>background: var(--bg-card); border; shadow</code></td>
+      </tr>
+      <tr>
+        <td class="area">删除 metric-tile 独立 CSS</td>
+        <td><span class="p2">P2</span></td>
+        <td><code>globals.css</code></td>
+        <td>小</td>
+        <td>合入 Hero 后不再需要</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="margin-top:28px">
+    <h3 style="font-size:15px;font-weight:600;color:var(--t1);margin-bottom:14px">设计原则</h3>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="pc-t">纯色 &gt; 渐变</div>
+        <div class="pc-d">能用纯色解决的不用渐变。渐变只在确实需要表达方向感或空间感时使用。</div>
+      </div>
+      <div class="principle-card">
+        <div class="pc-t">排版 &gt; 装饰</div>
+        <div class="pc-d">字号、字重、留白、间距建立层级。不是叠加背景层、光晕、纹理。</div>
+      </div>
+      <div class="principle-card">
+        <div class="pc-t">不可见 = 不应该存在</div>
+        <div class="pc-d">透明度低于 10% 的渐变、肉眼分辨不出的光晕，直接删掉。浪费 GPU 还增加代码复杂度。</div>
+      </div>
+      <div class="principle-card">
+        <div class="pc-t">克制色彩</div>
+        <div class="pc-d">整个项目的彩色元素：主色蓝、辅助青绿、语义色（红/黄/绿）。不混用、不叠加、不渐变。</div>
+      </div>
+      <div class="principle-card">
+        <div class="pc-t">网格纹理、粒子、光晕是 AI 设计标志</div>
+        <div class="pc-d">这些元素在 AI 生成的落地页上出现频率极高。真正好的设计（Linear、Vercel、Stripe）很少使用。</div>
+      </div>
+      <div class="principle-card">
+        <div class="pc-t">功能页面不需要特效</div>
+        <div class="pc-d">登录页是功能页面，不是品牌展示页。用户来完成任务，不需要浮动粒子动画。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function go(id, el) {
+  document.querySelectorAll('.sec').forEach(s => s.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  el.classList.add('on');
+}
+</script>
+</body>
+</html>
