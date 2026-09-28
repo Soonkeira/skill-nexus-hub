@@ -12,6 +12,7 @@ from httpx import ASGITransport, AsyncClient
 
 # Import models FIRST so they register with Base.metadata
 import app.models  # noqa: F401
+from app.config import settings
 from app.database import Base
 from app.main import app as fastapi_app
 from app.api.deps import get_db
@@ -49,6 +50,19 @@ _patch_types_for_sqlite()
 
 TEST_DB_URL = "sqlite+aiosqlite://"
 TEST_PASSWORD = "Test1234"
+
+
+@pytest.fixture(autouse=True)
+def isolated_data_dir(tmp_path, monkeypatch):
+    """Point DATA_DIR at a per-test temp dir so tests never touch real storage.
+
+    The default "/data/skills" resolves to a drive-relative path on Windows
+    (silently writable) but to a real unwritable /data/skills on Linux CI,
+    failing every file upload with a 500.
+    """
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    monkeypatch.setattr(settings, "data_dir", str(data_dir))
 
 
 @pytest_asyncio.fixture(autouse=True)
