@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main]
   pull_request:
-    branches: [main, master]
+    branches: [main]
 
 jobs:
   backend:
@@ -41,10 +41,29 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Install dependencies
         run: npm ci
+      - name: Test (node --test)
+        run: node --test tests/*.test.mjs
       - name: Type-check
         run: npx tsc --noEmit
       - name: Build
         run: npm run build
+
+  cli:
+    name: CLI (pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install typer httpx rich pyyaml pytest
+      - name: Test
+        run: python -m pytest -q
 
   codegen-sync:
     name: Type drift check (openapi-typescript)

@@ -1,5 +1,6 @@
 import io
 import zipfile
+from datetime import datetime, timezone
 
 import pytest
 from fastapi import HTTPException
@@ -104,6 +105,48 @@ async def _make_admin(username: str = "admin"):
         user.role = "admin"
         await session.commit()
         break
+
+
+async def _set_version_created_at(skill_slug: str, version: str, created_at: datetime):
+    """Pin a version's created_at so latest-pointer ordering is deterministic."""
+    async for session in fastapi_app.dependency_overrides[get_db]():
+        skill_result = await session.execute(
+            select(Skill).where(Skill.slug == skill_slug)
+        )
+        skill = skill_result.scalar_one()
+        ver_result = await session.execute(
+            select(SkillVersion).where(
+                SkillVersion.skill_id == skill.id,
+                SkillVersion.version == version,
+            )
+        )
+        ver = ver_result.scalar_one()
+        ver.created_at = created_at
+        await session.commit()
+        break
+
+
+async def _get_version_id(skill_slug: str, version: str):
+    async for session in fastapi_app.dependency_overrides[get_db]():
+        skill_result = await session.execute(
+            select(Skill).where(Skill.slug == skill_slug)
+        )
+        skill = skill_result.scalar_one()
+        ver_result = await session.execute(
+            select(SkillVersion.id).where(
+                SkillVersion.skill_id == skill.id,
+                SkillVersion.version == version,
+            )
+        )
+        return ver_result.scalar_one()
+
+
+async def _get_latest_version_id(skill_slug: str):
+    async for session in fastapi_app.dependency_overrides[get_db]():
+        result = await session.execute(
+            select(Skill).where(Skill.slug == skill_slug)
+        )
+        return result.scalar_one().latest_version_id
 
 
 async def test_upload_version(client: AsyncClient):
@@ -417,3 +460,120 @@ async def test_version_file_content_uses_the_file_media_type(client: AsyncClient
 
     assert html_response.status_code == 200
     assert html_response.headers["content-type"].startswith("text/plain")
+
+
+# --- Helpers for the latest-pointer state-machine tests ---
+
+
+async def _upload_version(client: AsyncClient, slug: str, version: str, token: str):
+    resp = await client.post(
+        f"/api/skills/by-slug/{slug}/versions",
+        files={"file": ("skill.zip", _make_skill_zip(slug, version), "application/zip")},
+        data={"version": version},
+        headers=_auth(token),
+    )
+    assert resp.status_code == 201
+    return resp.json()
+
+
+async def _approve(client: AsyncClient, slug: str, version: str, admin_token: str):
+    resp = await client.post(
+        f"/api/skills/by-slug/{slug}/versions/{version}/approve",
+        headers=_auth(admin_token),
+    )
+    assert resp.status_code == 200
+    return resp.json()
+
+
+async def _reject(client: AsyncClient, slug: str, version: str, admin_token: str):
+    resp = await client.post(
+        f"/api/skills/by-slug/{slug}/versions/{version}/reject",
+        headers=_auth(admin_token),
+    )
+    assert resp.status_code == 200
+    return resp.json()
+
+
+async def _setup_skill_with_versions(client: AsyncClient, prefix: str, versions: list[str]):
+    """Register publisher + admin, create a skill, upload the given versions."""
+    # Usernames only allow [a-zA-Z0-9_] (auth.py), so strip hyphens.
+    publisher = f"{prefix.replace('-', '_')}_pub"
+    await _register(client, publisher)
+    token = await _login(client, publisher)
+    await _create_skill_direct(prefix, publisher, name=prefix.replace("-", " ").title())
+    for version in versions:
+        await _upload_version(client, prefix, version, token)
+
+    admin = f"{prefix.replace('-', '_')}_admin"
+    await _register(client, admin)
+    await _make_admin(admin)
+    admin_token = await _login(client, admin)
+    return token, admin_token
+
+
+async def test_reapprove_does_not_regress_latest_pointer(client: AsyncClient):
+    slug = "reapprove-skill"
+    _, admin_token = await _setup_skill_with_versions(client, slug, ["1.0.0", "2.0.0"])
+
+    # Pin upload order: 1.0.0 older, 2.0.0 newer.
+    await _set_version_created_at(slug, "1.0.0", datetime(2026, 1, 1, tzinfo=timezone.utc))
+    await _set_version_created_at(slug, "2.0.0", datetime(2026, 1, 2, tzinfo=timezone.utc))
+
+    await _approve(client, slug, "1.0.0", admin_token)
+    await _approve(client, slug, "2.0.0", admin_token)
+    assert await _get_latest_version_id(slug) == await _get_version_id(slug, "2.0.0")
+
+    # Re-approving the older, already-approved version must not move the pointer.
+    await _approve(client, slug, "1.0.0", admin_token)
+    assert await _get_latest_version_id(slug) == await _get_version_id(slug, "2.0.0")
+
+
+async def test_approve_older_pending_version_keeps_newer_latest(client: AsyncClient):
+    slug = "older-pending-skill"
+    _, admin_token = await _setup_skill_with_versions(client, slug, ["1.0.0", "2.0.0"])
+
+    # 1.0.0 is the most recently published, 2.0.0 was published earlier.
+    await _set_version_created_at(slug, "1.0.0", datetime(2026, 1, 2, tzinfo=timezone.utc))
+    await _set_version_created_at(slug, "2.0.0", datetime(2026, 1, 1, tzinfo=timezone.utc))
+
+    await _approve(client, slug, "1.0.0", admin_token)
+    assert await _get_latest_version_id(slug) == await _get_version_id(slug, "1.0.0")
+
+    # Approving the older pending version must not move the pointer.
+    await _approve(client, slug, "2.0.0", admin_token)
+    assert await _get_latest_version_id(slug) == await _get_version_id(slug, "1.0.0")
+
+
+async def test_reject_latest_version_repoints_pointer(client: AsyncClient):
+    slug = "reject-latest-skill"
+    _, admin_token = await _setup_skill_with_versions(client, slug, ["1.0.0", "2.0.0"])
+
+    await _set_version_created_at(slug, "1.0.0", datetime(2026, 1, 1, tzinfo=timezone.utc))
+    await _set_version_created_at(slug, "2.0.0", datetime(2026, 1, 2, tzinfo=timezone.utc))
+
+    await _approve(client, slug, "1.0.0", admin_token)
+    await _approve(client, slug, "2.0.0", admin_token)
+    assert await _get_latest_version_id(slug) == await _get_version_id(slug, "2.0.0")
+
+    # Rejecting the latest approved version repoints to the most recent
+    # remaining approved version.
+    await _reject(client, slug, "2.0.0", admin_token)
+    assert await _get_latest_version_id(slug) == await _get_version_id(slug, "1.0.0")
+
+    # With no approved version left, the pointer is cleared.
+    await _reject(client, slug, "1.0.0", admin_token)
+    assert await _get_latest_version_id(slug) is None
+
+
+async def test_reject_pending_version_leaves_pointer_untouched(client: AsyncClient):
+    slug = "reject-pending-skill"
+    _, admin_token = await _setup_skill_with_versions(client, slug, ["1.0.0", "2.0.0"])
+
+    await _approve(client, slug, "1.0.0", admin_token)
+    latest_before = await _get_latest_version_id(slug)
+    assert latest_before == await _get_version_id(slug, "1.0.0")
+
+    # 2.0.0 is still pending and not the latest pointer — rejecting it must
+    # not touch the pointer.
+    await _reject(client, slug, "2.0.0", admin_token)
+    assert await _get_latest_version_id(slug) == latest_before

@@ -8,6 +8,13 @@ from pathlib import PurePosixPath
 import yaml
 
 
+# Zip-bomb guards for upload normalization: caps on the UNCOMPRESSED payload
+# enforced while expanding archives (consistent with the 100MB post-check in
+# parse_skill_yaml and the 50MB compressed upload limit in versions.py).
+MAX_TOTAL_UNCOMPRESSED = 100 * 1024 * 1024
+MAX_SINGLE_FILE_UNCOMPRESSED = 30 * 1024 * 1024
+
+
 @dataclass
 class SkillYaml:
     name: str
@@ -138,13 +145,29 @@ def normalize_to_zip(content: bytes, filename: str) -> tuple[bytes, str]:
         buf = io.BytesIO()
         with tarfile.open(fileobj=io.BytesIO(content), mode="r:gz") as tf:
             with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+                total_uncompressed = 0
                 for member in tf.getmembers():
                     if member.isdir():
                         continue
                     f = tf.extractfile(member)
                     if f is None:
                         continue
-                    zf.writestr(member.name, f.read())
+                    # Stream with a running cap: a small compressed archive can
+                    # expand to gigabytes (zip bomb). Read one byte beyond the
+                    # per-file cap so oversized members are detected.
+                    data = f.read(MAX_SINGLE_FILE_UNCOMPRESSED + 1)
+                    if len(data) > MAX_SINGLE_FILE_UNCOMPRESSED:
+                        raise ValueError(
+                            f"Archived file too large: {member.name} exceeds "
+                            f"{MAX_SINGLE_FILE_UNCOMPRESSED // (1024 * 1024)}MB when decompressed"
+                        )
+                    total_uncompressed += len(data)
+                    if total_uncompressed > MAX_TOTAL_UNCOMPRESSED:
+                        raise ValueError(
+                            "Archive too large when decompressed "
+                            f"(limit is {MAX_TOTAL_UNCOMPRESSED // (1024 * 1024)}MB)"
+                        )
+                    zf.writestr(member.name, data)
         return buf.getvalue(), "upload.zip"
 
     raise ValueError(f"Unsupported file format: {filename}. Use .zip, .md, or .tar.gz")

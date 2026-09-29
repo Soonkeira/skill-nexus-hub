@@ -1,8 +1,10 @@
 import io
+import tarfile
 import zipfile
 
 import pytest
 
+import app.services.skill_yaml as skill_yaml_module
 from app.services.skill_yaml import parse_skill_yaml, validate_skill_yaml, normalize_to_zip, list_zip_files, read_zip_file
 
 
@@ -122,6 +124,41 @@ def test_normalize_zip_unchanged():
     original = buf.getvalue()
     result, _ = normalize_to_zip(original, "pdf.zip")
     assert result == original
+
+
+def _make_targz(entries: list[tuple[str, bytes]]) -> bytes:
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:gz") as tf:
+        for name, data in entries:
+            info = tarfile.TarInfo(name)
+            info.size = len(data)
+            tf.addfile(info, io.BytesIO(data))
+    return buf.getvalue()
+
+
+def test_normalize_targz_valid():
+    data = _make_targz([("pdf/SKILL.md", b"---\nname: pdf\n---\n# PDF"), ("pdf/a.txt", b"hi")])
+    result, out_name = normalize_to_zip(data, "pdf.tar.gz")
+    assert out_name == "upload.zip"
+    with zipfile.ZipFile(io.BytesIO(result)) as zf:
+        assert "pdf/SKILL.md" in zf.namelist()
+        assert zf.read("pdf/a.txt") == b"hi"
+
+
+def test_normalize_targz_rejects_total_size_bomb(monkeypatch):
+    # Zeros compress to almost nothing, so a tiny archive can claim a huge
+    # uncompressed size.
+    monkeypatch.setattr(skill_yaml_module, "MAX_TOTAL_UNCOMPRESSED", 64)
+    data = _make_targz([("a.bin", b"\0" * 100)])
+    with pytest.raises(ValueError, match="too large"):
+        normalize_to_zip(data, "bomb.tar.gz")
+
+
+def test_normalize_targz_rejects_single_file_bomb(monkeypatch):
+    monkeypatch.setattr(skill_yaml_module, "MAX_SINGLE_FILE_UNCOMPRESSED", 64)
+    data = _make_targz([("a.bin", b"\0" * 100)])
+    with pytest.raises(ValueError, match="too large"):
+        normalize_to_zip(data, "bomb.tar.gz")
 
 
 def test_list_zip_files():

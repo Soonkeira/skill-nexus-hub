@@ -15,15 +15,15 @@ Please search existing issues before filing a new one.
 
 The fastest route to a running stack is the Docker Compose Quick Start in the [README](README.md). For active development:
 
-- **Backend** (`backend/`): Python 3.12. `pip install -r requirements.txt`, then run tests with `python -m pytest -q`. The app runs with `uvicorn app.main:app`.
-- **Frontend** (`frontend/`): Node 20. `npm ci`, type-check with `npx tsc --noEmit`, build with `npm run build`.
-- **CLI** (`cli/`): Python 3.10+. `pip install ./cli`, tests in `cli/tests` via `python -m pytest -q`.
+- **Backend** (`backend/`): Python 3.12. `pip install -r requirements-dev.txt` (already includes `requirements.txt`), then run tests with `python -m pytest -q` (inside `backend/`). The app runs with `uvicorn app.main:app`.
+- **Frontend** (`frontend/`): Node 20. `npm ci`; run tests with `node --test tests/*.test.mjs`, type-check with `npx tsc --noEmit`, build with `npm run build` (all inside `frontend/`).
+- **CLI** (`cli/`): Python 3.10+. `pip install ./cli pytest`, tests in `cli/tests` via `python -m pytest -q` (inside `cli/`).
 
 `bash scripts/ci.sh` runs the same steps as CI locally (ruff lint, backend pytest, frontend type-check + build). Use it before pushing.
 
 ## Branching and commits
 
-- Create a branch from `master`: `feature/<short-name>` (e.g. `feature/install-targets`).
+- Create a branch from `main`: `feature/<short-name>` (e.g. `feature/install-targets`).
 - Write commit messages following [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `test:`, `chore:`, etc. One logical change per commit.
 
 ## Code style
@@ -56,8 +56,8 @@ The project is licensed under the [MIT License](LICENSE). By contributing, you a
 欢迎为 Skill Nexus Hub 贡献代码！
 
 - **提 Issue**：Bug 报告请附复现步骤、日志与部署方式；功能请求请先说明要解决的问题。提交前请先搜索是否已有同类 Issue。
-- **开发环境**：参见 [README](README.zh-CN.md) 的 Docker Compose 快速开始；后端 `pip install -r requirements.txt` 后用 `python -m pytest -q` 跑测试；前端 `npm ci` + `npx tsc --noEmit` + `npm run build`；CLI 在 `cli/` 下 `pip install ./cli` 后跑 `python -m pytest -q`。推送前建议先跑 `bash scripts/ci.sh`。
-- **分支与提交**：从 `master` 拉出 `feature/<short-name>` 分支；提交信息遵循 Conventional Commits（`feat:` / `fix:` / `docs:` / `test:` / `chore:`）。
+- **开发环境**：参见 [README](README.zh-CN.md) 的 Docker Compose 快速开始；后端 `pip install -r requirements-dev.txt` 后在 `backend/` 用 `python -m pytest -q` 跑测试；前端在 `frontend/` 下 `npm ci`、`node --test tests/*.test.mjs` 跑测试、`npx tsc --noEmit` 类型检查、`npm run build` 构建；CLI 在 `cli/` 下 `pip install ./cli pytest` 后跑 `python -m pytest -q`。推送前建议先跑 `bash scripts/ci.sh`。
+- **分支与提交**：从 `main` 拉出 `feature/<short-name>` 分支；提交信息遵循 Conventional Commits（`feat:` / `fix:` / `docs:` / `test:` / `chore:`）。
 - **代码风格**：后端暂无 lint 配置（CI 中的 ruff 检查目前不阻塞），保持现有风格；前端 TypeScript 严格模式必须通过；CLI 保持 Typer + Rich 的现有结构。
 - **PR 检查项**：后端与 CLI 测试通过、前端类型检查与构建通过、文档同步更新、不包含密钥或本机路径、PR 标题遵循 Conventional Commits、每个 PR 只做一件事。
 - **许可证**：项目采用 [MIT License](LICENSE)，贡献内容同样以 MIT 许可发布（无 CLA / DCO 要求）。

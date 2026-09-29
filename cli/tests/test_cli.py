@@ -256,3 +256,69 @@ class TestScanProtocol:
 
             assert result.exit_code == 0
             assert "custom-skill" in result.output.lower()
+
+
+class TestInstallProtocol:
+    """Tests for browser-triggered install (snh://install?...)."""
+
+    @patch("snh.config.save_token")
+    @patch("snh.config.save_server")
+    @patch("httpx.post")
+    @patch("snh.main.install")
+    def test_install_protocol_with_target(
+        self, mock_install, mock_http_post, mock_save_server, mock_save_token
+    ):
+        response = MagicMock(status_code=200)
+        response.json.return_value = {"token": "cli-token"}
+        mock_http_post.return_value = response
+
+        with patch("builtins.input", return_value=""):
+            main_module._handle_protocol(
+                "snh://install?token=browser-jwt&server=http%3A%2F%2Flocalhost%3A9527"
+                "&owner=alice&slug=demo&target=cursor&project=1"
+            )
+
+        mock_install.assert_called_once_with(
+            slug="alice/demo", target="cursor", project=True, custom_path=None
+        )
+
+    @patch("snh.config.save_token")
+    @patch("snh.config.save_server")
+    @patch("httpx.post")
+    @patch("snh.main.install")
+    def test_install_protocol_accepts_custom_path(
+        self, mock_install, mock_http_post, mock_save_server, mock_save_token
+    ):
+        response = MagicMock(status_code=200)
+        response.json.return_value = {"token": "cli-token"}
+        mock_http_post.return_value = response
+
+        with patch("builtins.input", return_value=""):
+            main_module._handle_protocol(
+                "snh://install?token=browser-jwt&server=http%3A%2F%2Flocalhost%3A9527"
+                "&owner=alice&slug=demo&path=C%3A%5Ccustom%5Cskills&project=0"
+            )
+
+        mock_install.assert_called_once_with(
+            slug="alice/demo", target=None, project=False, custom_path=r"C:\custom\skills"
+        )
+
+    @patch("snh.config.save_token")
+    @patch("snh.config.save_server")
+    @patch("httpx.post")
+    @patch("snh.main.install")
+    def test_install_protocol_requires_target_or_path(
+        self, mock_install, mock_http_post, mock_save_server, mock_save_token
+    ):
+        response = MagicMock(status_code=200)
+        response.json.return_value = {"token": "cli-token"}
+        mock_http_post.return_value = response
+
+        with patch("builtins.input", return_value=""):
+            with pytest.raises(SystemExit):
+                main_module._handle_protocol(
+                    "snh://install?token=browser-jwt&server=http%3A%2F%2Flocalhost%3A9527"
+                    "&owner=alice&slug=demo"
+                )
+
+        mock_install.assert_not_called()

@@ -20,6 +20,10 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://skillhub:${DB_PASSWORD}@postgres:5432/skill_nexus_hub
       SECRET_KEY: ${SECRET_KEY}
+      # Required so the ENV/SECRET_KEY fail-fast guard and CORS allowlist work
+      # in containers too (see backend/app/config.py).
+      ENV: ${ENV:-production}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:9527}
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
       DATA_DIR: /data/skills
       # Number of uvicorn worker processes (scales across CPU cores).

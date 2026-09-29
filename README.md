@@ -94,6 +94,7 @@ Environment variables (from `.env.example`):
 |---|---|
 | `DB_PASSWORD` | PostgreSQL password |
 | `SECRET_KEY` | JWT signing secret — must be changed in production |
+| `ENV` | `dev` or `production`; with `production` the backend refuses to start while `SECRET_KEY` is unchanged (fail-fast guard) |
 | `CORS_ORIGINS` | Allowed browser origins (comma-separated) |
 | `TRUSTED_PROXIES` | Trusted proxy IPs, when behind a reverse proxy |
 | `WEB_CONCURRENCY` | Uvicorn workers (default 4) |
@@ -104,8 +105,8 @@ For a full intranet deployment walkthrough on Ubuntu, see [docs/deployment-ubunt
 
 Install the CLI:
 
-- Download a prebuilt binary from [GitHub Releases](https://github.com/Soonkeira/skill-nexus-hub/releases), or
-- from your running hub instance — `cli/install.sh` (Linux/macOS) and `cli/install.bat` (Windows) fetch it from the server's `/api/cli/download/<platform>` endpoint and put it on `PATH`, or
+- **Recommended**: download a prebuilt binary from [GitHub Releases](https://github.com/Soonkeira/skill-nexus-hub/releases) (`snh.exe` / `snh-linux` / `snh-macos`) and put it on your `PATH`, or
+- from your running hub instance — `cli/install.sh` (Linux/macOS) and `cli/install.bat` (Windows) fetch a ZIP from the server's `/api/cli/download/<platform>` endpoint and extract the binary plus a preconfigured `snh.conf` (default server `http://localhost:9527`; set the `SKILL_HUB_SERVER` environment variable to override), or
 - build from source: `cd cli && python build.py` (PyInstaller, single-file executable) or `pip install ./cli` for a development install.
 
 Point it at your hub and log in:
@@ -119,17 +120,21 @@ Command reference:
 
 | Command | Description |
 |---|---|
+| `snh init -s <server-url>` | Configure the hub server URL |
 | `snh login` | Log in (interactive) |
+| `snh logout` | Log out |
 | `snh whoami` | Show current login |
 | `snh search <keyword>` | Search skills |
 | `snh info <skill-name>` | Show skill details |
-| `snh install <name>` | Install a skill |
-| `snh update <name>` | Update to the latest version |
+| `snh install <name>` | Install a skill (choose a target interactively, or use `--target` / `--project` / `--path`) |
+| `snh update <name>` / `snh update --all` | Update installed skill(s) to the latest version |
 | `snh list` | List installed skills |
 | `snh uninstall <name>` | Uninstall a skill |
-| `snh publish` | Publish the skill in the current directory |
-| `snh versions <name>` | List a skill's versions |
-| `snh logout` | Log out |
+| `snh publish <slug> --version <x.y.z> --file <zip>` | Publish a new version (`--changelog` optional) |
+| `snh versions [name]` | Show a skill's version history, or list installed skills when omitted |
+| `snh scan` | Scan local skill directories (`--upload` to submit results, `--path` for extra directories) |
+| `snh version` | Show the CLI version |
+| `snh uninstall-cli` | Uninstall the CLI, its config, and the `snh://` protocol handler from this computer |
 
 Browser one-click install: the web app can launch the local `snh` executable through the custom `snh://` URL protocol, so clicking "Install" on a skill page installs it without touching the terminal. The CLI exchanges the browser session token for a long-lived API token, then downloads and unpacks the skill into the chosen Agent's directory. Details, URL format, and limitations are documented in [docs/protocol-snh.md](docs/protocol-snh.md).
 

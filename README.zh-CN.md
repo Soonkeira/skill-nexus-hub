@@ -94,6 +94,7 @@ docker compose exec backend python -m app.cli
 |---|---|
 | `DB_PASSWORD` | PostgreSQL 数据库密码 |
 | `SECRET_KEY` | JWT 签名密钥 —— 生产环境必须修改 |
+| `ENV` | `dev` 或 `production`；为 `production` 时若 `SECRET_KEY` 未修改，后端将拒绝启动（快速失败守卫） |
 | `CORS_ORIGINS` | 允许的浏览器来源（逗号分隔） |
 | `TRUSTED_PROXIES` | 反向代理场景下的可信代理 IP 列表 |
 | `WEB_CONCURRENCY` | Uvicorn worker 数量（默认 4） |
@@ -104,8 +105,8 @@ docker compose exec backend python -m app.cli
 
 安装 CLI：
 
-- 从 [GitHub Releases](https://github.com/Soonkeira/skill-nexus-hub/releases) 下载预编译二进制，或
-- 从正在运行的实例获取 —— `cli/install.sh`（Linux/macOS）和 `cli/install.bat`（Windows）会从服务端的 `/api/cli/download/<platform>` 接口下载并加入 PATH，或
+- **推荐**：从 [GitHub Releases](https://github.com/Soonkeira/skill-nexus-hub/releases) 下载预编译二进制（`snh.exe` / `snh-linux` / `snh-macos`）并加入 `PATH`，或
+- 从正在运行的实例获取 —— `cli/install.sh`（Linux/macOS）和 `cli/install.bat`（Windows）会从服务端的 `/api/cli/download/<platform>` 接口下载 ZIP 并解压出二进制与预配置的 `snh.conf`（默认服务端 `http://localhost:9527`；可通过环境变量 `SKILL_HUB_SERVER` 覆盖），或
 - 从源码构建：`cd cli && python build.py`（PyInstaller，单文件可执行程序），开发调试可用 `pip install ./cli`。
 
 将 CLI 指向你的实例并登录：
@@ -119,17 +120,21 @@ snh login
 
 | 命令 | 说明 |
 |---|---|
+| `snh init -s <server-url>` | 配置服务端地址 |
 | `snh login` | 登录（交互式） |
+| `snh logout` | 登出 |
 | `snh whoami` | 查看当前登录状态 |
 | `snh search <keyword>` | 搜索技能 |
 | `snh info <skill-name>` | 查看技能详情 |
-| `snh install <name>` | 安装技能 |
-| `snh update <name>` | 更新到最新版本 |
+| `snh install <name>` | 安装技能（交互选择目标，也可用 `--target` / `--project` / `--path`） |
+| `snh update <name>` / `snh update --all` | 更新已安装技能到最新版本 |
 | `snh list` | 列出已安装技能 |
 | `snh uninstall <name>` | 卸载技能 |
-| `snh publish` | 发布当前目录下的技能 |
-| `snh versions <name>` | 查看技能版本列表 |
-| `snh logout` | 登出 |
+| `snh publish <slug> --version <x.y.z> --file <zip>` | 发布新版本（可选 `--changelog`） |
+| `snh versions [name]` | 查看技能版本历史；省略名称则列出已安装技能 |
+| `snh scan` | 扫描本地技能目录（`--upload` 上传结果，`--path` 指定额外目录） |
+| `snh version` | 显示 CLI 版本 |
+| `snh uninstall-cli` | 从本机卸载 CLI、配置及 `snh://` 协议处理 |
 
 浏览器一键安装：网页端可以通过自定义 `snh://` URL 协议唤起本地 `snh` 可执行程序，在技能详情页点击"安装"即可完成部署，无需手动敲命令。CLI 会先用浏览器会话 token 换取长期 API Token，再将技能包下载并解压到所选 Agent 的目录。URL 格式与已知限制见 [docs/protocol-snh.md](docs/protocol-snh.md)。
 

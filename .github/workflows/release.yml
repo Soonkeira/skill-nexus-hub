@@ -1,0 +1,67 @@
+name: Release
+
+# Build the snh CLI binaries for all three platforms and attach them to a
+# GitHub Release when a v* tag is pushed. Asset names must match
+# backend/app/api/cli_download.py PLATFORM_FILES: snh.exe / snh-linux / snh-macos.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build CLI (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build dependencies
+        run: pip install pyinstaller typer httpx rich pyyaml
+      - name: Build binary
+        run: python build.py
+      - name: Rename binary (Linux)
+        if: runner.os == 'Linux'
+        run: mv dist/snh dist/snh-linux
+      - name: Rename binary (macOS)
+        if: runner.os == 'macOS'
+        run: mv dist/snh dist/snh-macos
+      # Windows: PyInstaller already emits dist/snh.exe, matching PLATFORM_FILES.
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: snh-${{ matrix.os }}
+          path: cli/dist/snh*
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Restore executable bits
+        run: chmod +x dist/snh-linux dist/snh-macos
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/snh.exe
+            dist/snh-linux
+            dist/snh-macos

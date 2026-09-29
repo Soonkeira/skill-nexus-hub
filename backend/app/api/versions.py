@@ -211,12 +211,30 @@ async def approve_version(
     if ver is None:
         raise HTTPException(status_code=404, detail="Version not found")
 
+    is_reapproval = ver.status == VersionStatus.approved
     ver.status = VersionStatus.approved
     ver.reviewer_id = user.id
     ver.reviewed_at = utc_now()
 
-    # Update skill's latest_version_id
-    skill.latest_version_id = ver.id
+    # Advance the latest_version_id pointer only on a pending -> approved
+    # transition, and only when the newly approved version is the most recently
+    # published (created) approved version. Re-approving an older version must
+    # never move the pointer backwards.
+    if not is_reapproval:
+        newest_other = (
+            await db.execute(
+                select(SkillVersion)
+                .where(
+                    SkillVersion.skill_id == skill.id,
+                    SkillVersion.status == VersionStatus.approved,
+                    SkillVersion.id != ver.id,
+                )
+                .order_by(SkillVersion.created_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if newest_other is None or ver.created_at >= newest_other.created_at:
+            skill.latest_version_id = ver.id
 
     await log_action(
         db, actor_id=str(user.id), action="approve_version",
@@ -295,6 +313,24 @@ async def reject_version(
     ver.reviewer_id = user.id
     ver.reviewed_at = utc_now()
     ver.rejection_reason = body.reason if body else None
+
+    # If the rejected version was the skill's latest pointer, repoint it to the
+    # most recent remaining approved version (or clear it when none is left).
+    # Rejecting a non-latest version leaves the pointer untouched.
+    if skill.latest_version_id == ver.id:
+        remaining = (
+            await db.execute(
+                select(SkillVersion)
+                .where(
+                    SkillVersion.skill_id == skill.id,
+                    SkillVersion.status == VersionStatus.approved,
+                    SkillVersion.id != ver.id,
+                )
+                .order_by(SkillVersion.created_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        skill.latest_version_id = remaining.id if remaining is not None else None
 
     await log_action(
         db, actor_id=str(user.id), action="reject_version",

@@ -8,10 +8,14 @@ from starlette.responses import JSONResponse
 from app.config import settings
 
 # Per-path rate limit rules: (prefix_match, methods, max_requests, window_seconds)
+# Prefixes are matched with str.startswith against the request path, so each
+# prefix must be an actual leading segment of the target routes.
 PATH_LIMITS = [
     ("/api/auth/login", {"POST"}, 10, 60),
     ("/api/auth/register", {"POST"}, 5, 60),
-    ("/api/versions", None, 20, 60),
+    # Skill detail, version upload/download/list and file inspection all live
+    # under /api/skills/by-slug/<slug>/... (versions.py / skills.py routers).
+    ("/api/skills/by-slug", None, 20, 60),
     ("/api/tokens", {"POST", "DELETE"}, 5, 60),
 ]
 

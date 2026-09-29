@@ -212,16 +212,17 @@ def _handle_protocol(url: str):
     owner = params.get("owner", [None])[0]
     slug = params.get("slug", [None])[0]
     target = params.get("target", [None])[0]
+    custom_path = params.get("path", [None])[0]
     project = params.get("project", ["0"])[0] in ("1", "true", "True", "yes")
 
-    if not slug or not target:
+    if not slug or not (target or custom_path):
         rprint("[red]Missing required parameters (slug, target).[/red]")
         raise SystemExit(1)
 
     # Execute install
     install_slug = f"{owner}/{slug}" if owner else slug
-    rprint(f"\nInstalling [cyan]{install_slug}[/cyan] to [cyan]{target}[/cyan]...")
-    install(slug=install_slug, target=target, project=project)
+    rprint(f"\nInstalling [cyan]{install_slug}[/cyan] to [cyan]{target or custom_path}[/cyan]...")
+    install(slug=install_slug, target=target, project=project, custom_path=custom_path)
 
     rprint("\n[dim]Press Enter to exit...[/dim]")
     input()

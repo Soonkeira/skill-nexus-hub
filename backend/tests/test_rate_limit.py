@@ -43,3 +43,25 @@ async def test_token_list_is_not_limited_by_token_write_limit():
         statuses = [(await client.get("/api/tokens")).status_code for _ in range(6)]
 
     assert statuses == [200] * 6
+
+
+async def test_by_slug_routes_get_path_specific_limit():
+    app = FastAPI()
+
+    @app.get("/api/skills/by-slug/demo/versions")
+    async def list_versions():
+        return {"items": []}
+
+    app.add_middleware(RateLimitMiddleware)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        statuses = [
+            (await client.get("/api/skills/by-slug/demo/versions")).status_code
+            for _ in range(20)
+        ]
+        blocked = await client.get("/api/skills/by-slug/demo/versions")
+
+    assert statuses == [200] * 20
+    assert blocked.status_code == 429

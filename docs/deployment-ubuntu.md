@@ -96,6 +96,11 @@ Do not reuse your local development `.env`. Production must use a strong `DB_PAS
 strong `SECRET_KEY`. If the stack sits behind a reverse proxy, fill `TRUSTED_PROXIES` with the
 proxy IP addresses (comma-separated).
 
+> Fail-fast guard: with `ENV=production` the backend refuses to start while `SECRET_KEY` is left
+> at its default (`changeme`) — this is intentional (`backend/app/config.py`). The `.env` block
+> above always generates a strong random key, so this guard only bites when `ENV=production` is
+> set manually while `SECRET_KEY` remains unchanged.
+
 ## 7. Build the images
 
 ```bash
@@ -196,7 +201,31 @@ docker compose run --rm backend alembic upgrade head   # migrations BEFORE resta
 docker compose up -d
 ```
 
-## 13. Backup and restore
+## 13. Populate the CLI binaries
+
+The CLI download endpoint (`/api/cli/download/{platform}`) serves binaries from the `data/cli`
+directory (compose mounts it into the backend container at `/data/cli`). The directory ships empty,
+so populate it from the project's GitHub Releases (available since tag `v0.1.0`):
+
+```bash
+cd /opt/skill-nexus-hub/data/cli
+for f in snh.exe snh-linux snh-macos; do
+  curl -fLO "https://github.com/Soonkeira/skill-nexus-hub/releases/download/v0.1.0/$f"
+done
+docker compose restart backend
+```
+
+The backend then serves them at `/api/cli/download/{platform}` (`windows` / `linux` / `darwin`),
+packaged as a ZIP together with a preconfigured `snh.conf`. Verify:
+
+```bash
+curl -fsSL -o /dev/null -w "%{http_code}\n" "http://<SERVER-IP>:9527/api/cli/download/linux"
+```
+
+If the server has no internet access, download the three assets elsewhere and `scp` them into
+`/opt/skill-nexus-hub/data/cli/`, then restart the backend.
+
+## 14. Backup and restore
 
 Backups (database dump + uploaded skill files, kept for 30 days):
 
@@ -219,7 +248,7 @@ bash scripts/setup-cron.sh
 
 Keep off-machine copies of everything under `data/backups/`.
 
-## 14. Post-deployment checklist
+## 15. Post-deployment checklist
 
 ```text
 [ ] http://<SERVER-IP>:9527 opens
@@ -230,7 +259,7 @@ Keep off-machine copies of everything under `data/backups/`.
 [ ] Install-target filtering returns target-specific skills
 [ ] Skill detail pages render their README
 [ ] A skill can be published and installed
-[ ] The CLI download endpoint serves a binary
+[ ] The CLI download endpoint serves a binary (see section 13)
 [ ] Port 9527 is reachable (ufw / security group)
 [ ] Production .env uses strong DB_PASSWORD and SECRET_KEY (no defaults)
 [ ] A backup routine exists for the database and data/skills
