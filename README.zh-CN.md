@@ -86,7 +86,7 @@ docker compose up -d
 docker compose exec backend python -m app.cli
 ```
 
-脚本会提示输入用户名和密码，并创建拥有 admin 角色的用户。（另一种方式：先在网页注册普通账号，再将其提权 —— 见 [docs/deployment-ubuntu.md](docs/deployment-ubuntu.md)。）
+脚本会提示输入用户名和密码，并创建拥有 admin 角色的用户。（另一种方式：先在网页注册普通账号，再将其提权 —— 见 [docs/runbooks/deploy-ubuntu.md](docs/runbooks/deploy-ubuntu.md)。）
 
 环境变量（来自 `.env.example`）：
 
@@ -99,7 +99,7 @@ docker compose exec backend python -m app.cli
 | `TRUSTED_PROXIES` | 反向代理场景下的可信代理 IP 列表 |
 | `WEB_CONCURRENCY` | Uvicorn worker 数量（默认 4） |
 
-完整的 Ubuntu 内网部署步骤见 [docs/deployment-ubuntu.md](docs/deployment-ubuntu.md)。
+完整的 Ubuntu 内网部署步骤见 [docs/runbooks/deploy-ubuntu.md](docs/runbooks/deploy-ubuntu.md)。
 
 ## 命令行工具（`snh`）
 
@@ -136,7 +136,7 @@ snh login
 | `snh version` | 显示 CLI 版本 |
 | `snh uninstall-cli` | 从本机卸载 CLI、配置及 `snh://` 协议处理 |
 
-浏览器一键安装：网页端可以通过自定义 `snh://` URL 协议唤起本地 `snh` 可执行程序，在技能详情页点击"安装"即可完成部署，无需手动敲命令。CLI 会先用浏览器会话 token 换取长期 API Token，再将技能包下载并解压到所选 Agent 的目录。URL 格式与已知限制见 [docs/protocol-snh.md](docs/protocol-snh.md)。
+浏览器一键安装：网页端可以通过自定义 `snh://` URL 协议唤起本地 `snh` 可执行程序，在技能详情页点击"安装"即可完成部署，无需手动敲命令。CLI 会先用浏览器会话 token 换取长期 API Token，再将技能包下载并解压到所选 Agent 的目录。URL 格式与已知限制见 [docs/reference/protocol-snh.md](docs/reference/protocol-snh.md)。
 
 ## 技术栈
 
@@ -179,10 +179,12 @@ skill-nexus-hub/
 ├── frontend/          # Next.js Web 应用
 ├── backend/           # FastAPI 服务、SQLAlchemy 模型、Alembic 迁移
 ├── cli/               # snh CLI（Typer）+ PyInstaller 构建
-├── docs/              # 部署指南、snh:// 协议设计、开发历史文档
+├── docs/              # 运维手册、参考文档、ADR、审计证据（从 docs/README.md 进入）
+├── openspec/          # 开发中能力的变更说明
 ├── scripts/           # backup.sh / restore.sh / setup-cron.sh / ci.sh
 ├── docker-compose.yml
 ├── .env.example
+├── AGENTS.md          # 面向人类与 AI 协作者的仓库规则
 └── README.md
 ```
 
@@ -198,10 +200,15 @@ skill-nexus-hub/
 
 ## 文档
 
-- [docs/deployment-ubuntu.md](docs/deployment-ubuntu.md) — Ubuntu 内网（IP + 端口）部署指南
-- [docs/protocol-snh.md](docs/protocol-snh.md) — `snh://` 浏览器到 CLI 的安装协议
+- [docs/README.md](docs/README.md) — 文档地图（从这里开始）
+- [docs/runbooks/deploy-ubuntu.md](docs/runbooks/deploy-ubuntu.md) — Ubuntu 内网（IP + 端口）部署指南
+- [docs/reference/protocol-snh.md](docs/reference/protocol-snh.md) — `snh://` 浏览器到 CLI 的安装协议
+- [docs/adr/](docs/adr/) — 架构决策记录（ADR）
+- [openspec/](openspec/) — 开发中能力的变更说明
 - [CONTRIBUTING.md](CONTRIBUTING.md) — 如何参与贡献
-- [docs/dev-history/](docs/dev-history/) — 历史内部设计文档
+- [docs/archive/](docs/archive/) — 历史内部设计文档
+
+文档治理规范（新文档归属的决策树，一个主题一份权威文档）：[AGENTS.md](AGENTS.md)。
 
 ## Roadmap
 

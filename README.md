@@ -86,7 +86,7 @@ Create the first admin account:
 docker compose exec backend python -m app.cli
 ```
 
-The script prompts for a username and password and creates a user with the admin role. (Alternative: register a normal account on the website, then promote it — see [docs/deployment-ubuntu.md](docs/deployment-ubuntu.md).)
+The script prompts for a username and password and creates a user with the admin role. (Alternative: register a normal account on the website, then promote it — see [docs/runbooks/deploy-ubuntu.md](docs/runbooks/deploy-ubuntu.md).)
 
 Environment variables (from `.env.example`):
 
@@ -99,7 +99,7 @@ Environment variables (from `.env.example`):
 | `TRUSTED_PROXIES` | Trusted proxy IPs, when behind a reverse proxy |
 | `WEB_CONCURRENCY` | Uvicorn workers (default 4) |
 
-For a full intranet deployment walkthrough on Ubuntu, see [docs/deployment-ubuntu.md](docs/deployment-ubuntu.md).
+For a full intranet deployment walkthrough on Ubuntu, see [docs/runbooks/deploy-ubuntu.md](docs/runbooks/deploy-ubuntu.md).
 
 ## CLI (`snh`)
 
@@ -136,7 +136,7 @@ Command reference:
 | `snh version` | Show the CLI version |
 | `snh uninstall-cli` | Uninstall the CLI, its config, and the `snh://` protocol handler from this computer |
 
-Browser one-click install: the web app can launch the local `snh` executable through the custom `snh://` URL protocol, so clicking "Install" on a skill page installs it without touching the terminal. The CLI exchanges the browser session token for a long-lived API token, then downloads and unpacks the skill into the chosen Agent's directory. Details, URL format, and limitations are documented in [docs/protocol-snh.md](docs/protocol-snh.md).
+Browser one-click install: the web app can launch the local `snh` executable through the custom `snh://` URL protocol, so clicking "Install" on a skill page installs it without touching the terminal. The CLI exchanges the browser session token for a long-lived API token, then downloads and unpacks the skill into the chosen Agent's directory. Details, URL format, and limitations are documented in [docs/reference/protocol-snh.md](docs/reference/protocol-snh.md).
 
 ## Tech stack
 
@@ -179,10 +179,12 @@ skill-nexus-hub/
 ├── frontend/          # Next.js web app
 ├── backend/           # FastAPI service, SQLAlchemy models, Alembic migrations
 ├── cli/               # snh CLI (Typer) + PyInstaller build
-├── docs/              # deployment guide, snh:// protocol design, dev history
+├── docs/              # runbooks, reference, ADRs, audit evidence (start at docs/README.md)
+├── openspec/          # change specs for capabilities in flight
 ├── scripts/           # backup.sh / restore.sh / setup-cron.sh / ci.sh
 ├── docker-compose.yml
 ├── .env.example
+├── AGENTS.md          # contribution rules for humans and AI agents
 └── README.md
 ```
 
@@ -198,10 +200,15 @@ skill-nexus-hub/
 
 ## Documentation
 
-- [docs/deployment-ubuntu.md](docs/deployment-ubuntu.md) — Ubuntu (intranet, IP + port) deployment guide
-- [docs/protocol-snh.md](docs/protocol-snh.md) — `snh://` browser-to-CLI install protocol
+- [docs/README.md](docs/README.md) — documentation map (start here)
+- [docs/runbooks/deploy-ubuntu.md](docs/runbooks/deploy-ubuntu.md) — Ubuntu (intranet, IP + port) deployment guide
+- [docs/reference/protocol-snh.md](docs/reference/protocol-snh.md) — `snh://` browser-to-CLI install protocol
+- [docs/adr/](docs/adr/) — architecture decision records
+- [openspec/](openspec/) — change specs for capabilities in flight
 - [CONTRIBUTING.md](CONTRIBUTING.md) — how to contribute
-- [docs/dev-history/](docs/dev-history/) — historical internal design documents
+- [docs/archive/](docs/archive/) — historical internal design documents
+
+Documentation governance (where new docs belong, one canonical document per topic): [AGENTS.md](AGENTS.md).
 
 ## Roadmap
 
